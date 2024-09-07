@@ -1,13 +1,12 @@
 [workspace]
-members = [
-    "programs/*",
-    "client",
-]
+members = ["programs/*", "client", "trident-tests/fuzz_tests"]
+resolver = "1"
 
 [profile.release]
 overflow-checks = true
 lto = "fat"
 codegen-units = 1
+
 [profile.release.build-override]
 opt-level = 3
 incremental = false

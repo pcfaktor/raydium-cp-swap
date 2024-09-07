@@ -9,3 +9,4 @@ test-ledger
 .yarn
 Makefile
 
+trident-tests/fuzz_tests/fuzzing/hfuzz_target
