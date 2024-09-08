@@ -2051,6 +2051,7 @@ dependencies = [
  "assert_matches",
  "honggfuzz",
  "raydium-cp-swap",
+ "spl-memo",
  "trident-client",
 ]
 

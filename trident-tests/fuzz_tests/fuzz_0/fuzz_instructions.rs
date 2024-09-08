@@ -1,5 +1,7 @@
 pub mod raydium_cp_swap_fuzz_instructions {
     use crate::accounts_snapshots::*;
+    use raydium_cp_swap::states::{AMM_CONFIG_SEED, OBSERVATION_SEED, POOL_VAULT_SEED};
+    use solana_sdk::native_token::LAMPORTS_PER_SOL;
     use trident_client::fuzzing::*;
     #[derive(Arbitrary, DisplayIx, FuzzTestExecutor, FuzzDeserialize)]
     pub enum FuzzInstruction {
@@ -263,11 +265,11 @@ pub mod raydium_cp_swap_fuzz_instructions {
             _fuzz_accounts: &mut FuzzAccounts,
         ) -> Result<Self::IxData, FuzzingError> {
             let data = raydium_cp_swap::instruction::CreateAmmConfig {
-                index: todo!(),
-                trade_fee_rate: todo!(),
-                protocol_fee_rate: todo!(),
-                fund_fee_rate: todo!(),
-                create_pool_fee: todo!(),
+                index: self.data.index,
+                trade_fee_rate: self.data.trade_fee_rate,
+                protocol_fee_rate: self.data.protocol_fee_rate,
+                fund_fee_rate: self.data.fund_fee_rate,
+                create_pool_fee: self.data.create_pool_fee,
             };
             Ok(data)
         }
@@ -276,11 +278,26 @@ pub mod raydium_cp_swap_fuzz_instructions {
             client: &mut impl FuzzClient,
             fuzz_accounts: &mut FuzzAccounts,
         ) -> Result<(Vec<Keypair>, Vec<AccountMeta>), FuzzingError> {
-            let signers = vec![todo!()];
+            let signer = fuzz_accounts.owner.get_or_create_account(
+                self.accounts.owner,
+                client,
+                LAMPORTS_PER_SOL,
+            );
+
+            let amm_config = fuzz_accounts
+                .amm_config
+                .get_or_create_account(
+                    self.accounts.amm_config,
+                    &[AMM_CONFIG_SEED.as_bytes(), &self.data.index.to_be_bytes()],
+                    &raydium_cp_swap::ID,
+                )
+                .unwrap();
+
+            let signers = vec![signer.clone()];
             let acc_meta = raydium_cp_swap::accounts::CreateAmmConfig {
-                owner: todo!(),
-                amm_config: todo!(),
-                system_program: todo!(),
+                owner: signer.pubkey(),
+                amm_config: amm_config.pubkey,
+                system_program: solana_sdk::system_program::ID,
             }
             .to_account_metas(None);
             Ok((signers, acc_meta))
@@ -296,8 +313,8 @@ pub mod raydium_cp_swap_fuzz_instructions {
             _fuzz_accounts: &mut FuzzAccounts,
         ) -> Result<Self::IxData, FuzzingError> {
             let data = raydium_cp_swap::instruction::UpdateAmmConfig {
-                param: todo!(),
-                value: todo!(),
+                param: self.data.param,
+                value: self.data.value,
             };
             Ok(data)
         }
@@ -306,10 +323,25 @@ pub mod raydium_cp_swap_fuzz_instructions {
             client: &mut impl FuzzClient,
             fuzz_accounts: &mut FuzzAccounts,
         ) -> Result<(Vec<Keypair>, Vec<AccountMeta>), FuzzingError> {
-            let signers = vec![todo!()];
+            let signer = fuzz_accounts.owner.get_or_create_account(
+                self.accounts.owner,
+                client,
+                LAMPORTS_PER_SOL,
+            );
+
+            let amm_config = fuzz_accounts
+                .amm_config
+                .get_or_create_account(
+                    self.accounts.amm_config,
+                    &[AMM_CONFIG_SEED.as_bytes(), &0u16.to_be_bytes()],
+                    &raydium_cp_swap::ID,
+                )
+                .unwrap();
+
+            let signers = vec![signer.clone()];
             let acc_meta = raydium_cp_swap::accounts::UpdateAmmConfig {
-                owner: todo!(),
-                amm_config: todo!(),
+                owner: signer.pubkey(),
+                amm_config: amm_config.pubkey,
             }
             .to_account_metas(None);
             Ok((signers, acc_meta))
@@ -324,7 +356,9 @@ pub mod raydium_cp_swap_fuzz_instructions {
             _client: &mut impl FuzzClient,
             _fuzz_accounts: &mut FuzzAccounts,
         ) -> Result<Self::IxData, FuzzingError> {
-            let data = raydium_cp_swap::instruction::UpdatePoolStatus { status: todo!() };
+            let data = raydium_cp_swap::instruction::UpdatePoolStatus {
+                status: self.data.status,
+            };
             Ok(data)
         }
         fn get_accounts(
@@ -332,10 +366,22 @@ pub mod raydium_cp_swap_fuzz_instructions {
             client: &mut impl FuzzClient,
             fuzz_accounts: &mut FuzzAccounts,
         ) -> Result<(Vec<Keypair>, Vec<AccountMeta>), FuzzingError> {
-            let signers = vec![todo!()];
+            let signer = fuzz_accounts.owner.get_or_create_account(
+                self.accounts.authority,
+                client,
+                LAMPORTS_PER_SOL,
+            );
+
+            let pool_state = fuzz_accounts.pool_state.get_or_create_account(
+                self.accounts.pool_state,
+                client,
+                LAMPORTS_PER_SOL,
+            );
+
+            let signers = vec![signer.clone()];
             let acc_meta = raydium_cp_swap::accounts::UpdatePoolStatus {
-                authority: todo!(),
-                pool_state: todo!(),
+                authority: signer.pubkey(),
+                pool_state: pool_state.pubkey(),
             }
             .to_account_metas(None);
             Ok((signers, acc_meta))
@@ -351,8 +397,8 @@ pub mod raydium_cp_swap_fuzz_instructions {
             _fuzz_accounts: &mut FuzzAccounts,
         ) -> Result<Self::IxData, FuzzingError> {
             let data = raydium_cp_swap::instruction::CollectProtocolFee {
-                amount_0_requested: todo!(),
-                amount_1_requested: todo!(),
+                amount_0_requested: self.data.amount_0_requested,
+                amount_1_requested: self.data.amount_1_requested,
             };
             Ok(data)
         }
@@ -361,20 +407,109 @@ pub mod raydium_cp_swap_fuzz_instructions {
             client: &mut impl FuzzClient,
             fuzz_accounts: &mut FuzzAccounts,
         ) -> Result<(Vec<Keypair>, Vec<AccountMeta>), FuzzingError> {
-            let signers = vec![todo!()];
+            let signer = fuzz_accounts.owner.get_or_create_account(
+                self.accounts.owner,
+                client,
+                LAMPORTS_PER_SOL,
+            );
+
+            let authority = fuzz_accounts.authority.get_or_create_account(
+                self.accounts.authority,
+                client,
+                LAMPORTS_PER_SOL,
+            );
+
+            let pool_state = fuzz_accounts.pool_state.get_or_create_account(
+                self.accounts.pool_state,
+                client,
+                LAMPORTS_PER_SOL,
+            );
+
+            let amm_config = fuzz_accounts
+                .amm_config
+                .get_or_create_account(
+                    self.accounts.amm_config,
+                    &[AMM_CONFIG_SEED.as_bytes(), &0u16.to_be_bytes()],
+                    &raydium_cp_swap::ID,
+                )
+                .unwrap();
+
+            let vault_0_mint = fuzz_accounts
+                .vault_0_mint
+                .get_or_create_account(0, client, 9, &signer.pubkey(), None)
+                .unwrap();
+
+            let token_0_mint = fuzz_accounts
+                .token_0_mint
+                .get_or_create_account(0, client, 9, &signer.pubkey(), None)
+                .unwrap();
+
+            let token_0_vault = fuzz_accounts
+                .token_0_vault
+                .get_or_create_account(
+                    self.accounts.token_0_vault,
+                    &[
+                        POOL_VAULT_SEED.as_bytes(),
+                        pool_state.pubkey().as_ref(),
+                        &token_0_mint.as_ref(),
+                    ],
+                    &raydium_cp_swap::ID,
+                )
+                .unwrap();
+
+            let recipient_token_0_account = fuzz_accounts
+                .recipient_token_0_account
+                .get_or_create_account(
+                    self.accounts.recipient_token_0_account,
+                    client,
+                    LAMPORTS_PER_SOL,
+                );
+
+            let vault_1_mint = fuzz_accounts
+                .vault_1_mint
+                .get_or_create_account(1, client, 9, &signer.pubkey(), None)
+                .unwrap();
+
+            let token_1_mint = fuzz_accounts
+                .token_1_mint
+                .get_or_create_account(1, client, 9, &signer.pubkey(), None)
+                .unwrap();
+
+            let token_1_vault = fuzz_accounts
+                .token_1_vault
+                .get_or_create_account(
+                    self.accounts.token_1_vault,
+                    &[
+                        POOL_VAULT_SEED.as_bytes(),
+                        pool_state.pubkey().as_ref(),
+                        token_1_mint.as_ref(),
+                    ],
+                    &raydium_cp_swap::ID,
+                )
+                .unwrap();
+
+            let recipient_token_1_account = fuzz_accounts
+                .recipient_token_1_account
+                .get_or_create_account(
+                    self.accounts.recipient_token_1_account,
+                    client,
+                    LAMPORTS_PER_SOL,
+                );
+
+            let signers = vec![signer.clone()];
             let acc_meta = raydium_cp_swap::accounts::CollectProtocolFee {
-                owner: todo!(),
-                authority: todo!(),
-                pool_state: todo!(),
-                amm_config: todo!(),
-                token_0_vault: todo!(),
-                token_1_vault: todo!(),
-                vault_0_mint: todo!(),
-                vault_1_mint: todo!(),
-                recipient_token_0_account: todo!(),
-                recipient_token_1_account: todo!(),
-                token_program: todo!(),
-                token_program_2022: todo!(),
+                owner: signer.pubkey(),
+                authority: authority.pubkey(),
+                pool_state: pool_state.pubkey(),
+                amm_config: amm_config.pubkey,
+                token_0_vault: token_0_vault.pubkey,
+                token_1_vault: token_1_vault.pubkey,
+                vault_0_mint,
+                vault_1_mint,
+                recipient_token_0_account: recipient_token_0_account.pubkey(),
+                recipient_token_1_account: recipient_token_1_account.pubkey(),
+                token_program: anchor_spl::token::ID,
+                token_program_2022: anchor_spl::token_2022::ID,
             }
             .to_account_metas(None);
             Ok((signers, acc_meta))
@@ -390,8 +525,8 @@ pub mod raydium_cp_swap_fuzz_instructions {
             _fuzz_accounts: &mut FuzzAccounts,
         ) -> Result<Self::IxData, FuzzingError> {
             let data = raydium_cp_swap::instruction::CollectFundFee {
-                amount_0_requested: todo!(),
-                amount_1_requested: todo!(),
+                amount_0_requested: self.data.amount_0_requested,
+                amount_1_requested: self.data.amount_1_requested,
             };
             Ok(data)
         }
@@ -400,20 +535,109 @@ pub mod raydium_cp_swap_fuzz_instructions {
             client: &mut impl FuzzClient,
             fuzz_accounts: &mut FuzzAccounts,
         ) -> Result<(Vec<Keypair>, Vec<AccountMeta>), FuzzingError> {
-            let signers = vec![todo!()];
+            let signer = fuzz_accounts.owner.get_or_create_account(
+                self.accounts.owner,
+                client,
+                LAMPORTS_PER_SOL,
+            );
+
+            let authority = fuzz_accounts.authority.get_or_create_account(
+                self.accounts.authority,
+                client,
+                LAMPORTS_PER_SOL,
+            );
+
+            let pool_state = fuzz_accounts.pool_state.get_or_create_account(
+                self.accounts.pool_state,
+                client,
+                LAMPORTS_PER_SOL,
+            );
+
+            let amm_config = fuzz_accounts
+                .amm_config
+                .get_or_create_account(
+                    self.accounts.amm_config,
+                    &[AMM_CONFIG_SEED.as_bytes(), &0u16.to_be_bytes()],
+                    &raydium_cp_swap::ID,
+                )
+                .unwrap();
+
+            let vault_0_mint = fuzz_accounts
+                .vault_0_mint
+                .get_or_create_account(0, client, 9, &signer.pubkey(), None)
+                .unwrap();
+
+            let token_0_mint = fuzz_accounts
+                .token_0_mint
+                .get_or_create_account(0, client, 9, &signer.pubkey(), None)
+                .unwrap();
+
+            let token_0_vault = fuzz_accounts
+                .token_0_vault
+                .get_or_create_account(
+                    self.accounts.token_0_vault,
+                    &[
+                        POOL_VAULT_SEED.as_bytes(),
+                        pool_state.pubkey().as_ref(),
+                        token_0_mint.as_ref(),
+                    ],
+                    &raydium_cp_swap::ID,
+                )
+                .unwrap();
+
+            let recipient_token_0_account = fuzz_accounts
+                .recipient_token_0_account
+                .get_or_create_account(
+                    self.accounts.recipient_token_0_account,
+                    client,
+                    LAMPORTS_PER_SOL,
+                );
+
+            let vault_1_mint = fuzz_accounts
+                .vault_1_mint
+                .get_or_create_account(1, client, 9, &signer.pubkey(), None)
+                .unwrap();
+
+            let token_1_mint = fuzz_accounts
+                .token_1_mint
+                .get_or_create_account(1, client, 9, &signer.pubkey(), None)
+                .unwrap();
+
+            let token_1_vault = fuzz_accounts
+                .token_1_vault
+                .get_or_create_account(
+                    self.accounts.token_1_vault,
+                    &[
+                        POOL_VAULT_SEED.as_bytes(),
+                        pool_state.pubkey().as_ref(),
+                        token_1_mint.as_ref(),
+                    ],
+                    &raydium_cp_swap::ID,
+                )
+                .unwrap();
+
+            let recipient_token_1_account = fuzz_accounts
+                .recipient_token_1_account
+                .get_or_create_account(
+                    self.accounts.recipient_token_1_account,
+                    client,
+                    LAMPORTS_PER_SOL,
+                );
+
+            let signers = vec![signer.clone()];
             let acc_meta = raydium_cp_swap::accounts::CollectFundFee {
-                owner: todo!(),
-                authority: todo!(),
-                pool_state: todo!(),
-                amm_config: todo!(),
-                token_0_vault: todo!(),
-                token_1_vault: todo!(),
-                vault_0_mint: todo!(),
-                vault_1_mint: todo!(),
-                recipient_token_0_account: todo!(),
-                recipient_token_1_account: todo!(),
-                token_program: todo!(),
-                token_program_2022: todo!(),
+                owner: signer.pubkey(),
+                authority: authority.pubkey(),
+                pool_state: pool_state.pubkey(),
+                amm_config: amm_config.pubkey,
+                token_0_vault: token_0_vault.pubkey,
+                token_1_vault: token_1_vault.pubkey,
+                vault_0_mint,
+                vault_1_mint,
+                recipient_token_0_account: recipient_token_0_account.pubkey(),
+                recipient_token_1_account: recipient_token_1_account.pubkey(),
+                token_program: anchor_spl::token::ID,
+                token_program_2022: anchor_spl::token_2022::ID,
             }
             .to_account_metas(None);
             Ok((signers, acc_meta))
@@ -429,9 +653,9 @@ pub mod raydium_cp_swap_fuzz_instructions {
             _fuzz_accounts: &mut FuzzAccounts,
         ) -> Result<Self::IxData, FuzzingError> {
             let data = raydium_cp_swap::instruction::Initialize {
-                init_amount_0: todo!(),
-                init_amount_1: todo!(),
-                open_time: todo!(),
+                init_amount_0: self.data.init_amount_0,
+                init_amount_1: self.data.init_amount_1,
+                open_time: self.data.open_time,
             };
             Ok(data)
         }
@@ -440,28 +664,152 @@ pub mod raydium_cp_swap_fuzz_instructions {
             client: &mut impl FuzzClient,
             fuzz_accounts: &mut FuzzAccounts,
         ) -> Result<(Vec<Keypair>, Vec<AccountMeta>), FuzzingError> {
-            let signers = vec![todo!()];
+            let create_pool_fee = raydium_cp_swap::create_pool_fee_reveiver::ID;
+
+            let signer = fuzz_accounts.creator.get_or_create_account(
+                self.accounts.creator,
+                client,
+                LAMPORTS_PER_SOL,
+            );
+
+            let authority = fuzz_accounts.authority.get_or_create_account(
+                self.accounts.authority,
+                client,
+                LAMPORTS_PER_SOL,
+            );
+
+            let pool_state = fuzz_accounts.pool_state.get_or_create_account(
+                self.accounts.pool_state,
+                client,
+                LAMPORTS_PER_SOL,
+            );
+
+            let amm_config = fuzz_accounts
+                .amm_config
+                .get_or_create_account(
+                    self.accounts.amm_config,
+                    &[AMM_CONFIG_SEED.as_bytes(), &0u16.to_be_bytes()],
+                    &raydium_cp_swap::ID,
+                )
+                .unwrap();
+
+            let token_0_mint = fuzz_accounts
+                .token_0_mint
+                .get_or_create_account(0, client, 9, &signer.pubkey(), None)
+                .unwrap();
+
+            let token_0_vault = fuzz_accounts
+                .token_0_vault
+                .get_or_create_account(
+                    self.accounts.token_0_vault,
+                    &[
+                        POOL_VAULT_SEED.as_bytes(),
+                        pool_state.pubkey().as_ref(),
+                        token_0_mint.as_ref(),
+                    ],
+                    &raydium_cp_swap::ID,
+                )
+                .unwrap();
+
+            let creator_token_0 = fuzz_accounts
+                .creator_token_0
+                .get_or_create_account(
+                    self.accounts.creator_token_0,
+                    client,
+                    token_0_mint,
+                    signer.pubkey(),
+                    0,
+                    None,
+                    None,
+                    0,
+                    None,
+                )
+                .unwrap();
+
+            let token_1_mint = fuzz_accounts
+                .token_1_mint
+                .get_or_create_account(1, client, 9, &signer.pubkey(), None)
+                .unwrap();
+
+            let token_1_vault = fuzz_accounts
+                .token_1_vault
+                .get_or_create_account(
+                    self.accounts.token_1_vault,
+                    &[
+                        POOL_VAULT_SEED.as_bytes(),
+                        pool_state.pubkey().as_ref(),
+                        token_1_mint.as_ref(),
+                    ],
+                    &raydium_cp_swap::ID,
+                )
+                .unwrap();
+
+            let creator_token_1 = fuzz_accounts
+                .creator_token_1
+                .get_or_create_account(
+                    self.accounts.creator_token_1,
+                    client,
+                    token_1_mint,
+                    signer.pubkey(),
+                    0,
+                    None,
+                    None,
+                    0,
+                    None,
+                )
+                .unwrap();
+
+            let lp_mint = fuzz_accounts
+                .lp_mint
+                .get_or_create_account(2, client, 9, &signer.pubkey(), None)
+                .unwrap();
+
+            let creator_lp_token = fuzz_accounts
+                .creator_lp_token
+                .get_or_create_account(
+                    self.accounts.creator_lp_token,
+                    client,
+                    lp_mint,
+                    signer.pubkey(),
+                    0,
+                    None,
+                    None,
+                    0,
+                    None,
+                )
+                .unwrap();
+
+            let observation_state = fuzz_accounts
+                .observation_state
+                .get_or_create_account(
+                    self.accounts.observation_state,
+                    &[OBSERVATION_SEED.as_bytes(), pool_state.pubkey().as_ref()],
+                    &raydium_cp_swap::ID,
+                )
+                .unwrap();
+
+            let signers = vec![signer.clone()];
             let acc_meta = raydium_cp_swap::accounts::Initialize {
-                creator: todo!(),
-                amm_config: todo!(),
-                authority: todo!(),
-                pool_state: todo!(),
-                token_0_mint: todo!(),
-                token_1_mint: todo!(),
-                lp_mint: todo!(),
-                creator_token_0: todo!(),
-                creator_token_1: todo!(),
-                creator_lp_token: todo!(),
-                token_0_vault: todo!(),
-                token_1_vault: todo!(),
-                create_pool_fee: todo!(),
-                observation_state: todo!(),
-                token_program: todo!(),
-                token_0_program: todo!(),
-                token_1_program: todo!(),
-                associated_token_program: todo!(),
-                system_program: todo!(),
-                rent: todo!(),
+                creator: signer.pubkey(),
+                amm_config: amm_config.pubkey,
+                authority: authority.pubkey(),
+                pool_state: pool_state.pubkey(),
+                token_0_mint,
+                token_1_mint,
+                lp_mint,
+                creator_token_0,
+                creator_token_1,
+                creator_lp_token,
+                token_0_vault: token_0_vault.pubkey,
+                token_1_vault: token_1_vault.pubkey,
+                create_pool_fee,
+                observation_state: observation_state.pubkey,
+                token_program: anchor_spl::token::ID,
+                token_0_program: anchor_spl::token_2022::ID,
+                token_1_program: anchor_spl::token_2022::ID,
+                associated_token_program: anchor_spl::associated_token::ID,
+                system_program: solana_sdk::system_program::ID,
+                rent: solana_sdk::sysvar::rent::ID,
             }
             .to_account_metas(None);
             Ok((signers, acc_meta))
@@ -477,9 +825,9 @@ pub mod raydium_cp_swap_fuzz_instructions {
             _fuzz_accounts: &mut FuzzAccounts,
         ) -> Result<Self::IxData, FuzzingError> {
             let data = raydium_cp_swap::instruction::Deposit {
-                lp_token_amount: todo!(),
-                maximum_token_0_amount: todo!(),
-                maximum_token_1_amount: todo!(),
+                lp_token_amount: self.data.lp_token_amount,
+                maximum_token_0_amount: self.data.maximum_token_0_amount,
+                maximum_token_1_amount: self.data.maximum_token_1_amount,
             };
             Ok(data)
         }
@@ -488,21 +836,117 @@ pub mod raydium_cp_swap_fuzz_instructions {
             client: &mut impl FuzzClient,
             fuzz_accounts: &mut FuzzAccounts,
         ) -> Result<(Vec<Keypair>, Vec<AccountMeta>), FuzzingError> {
-            let signers = vec![todo!()];
+            let signer = fuzz_accounts.owner.get_or_create_account(
+                self.accounts.owner,
+                client,
+                LAMPORTS_PER_SOL,
+            );
+
+            let authority = fuzz_accounts.authority.get_or_create_account(
+                self.accounts.authority,
+                client,
+                LAMPORTS_PER_SOL,
+            );
+
+            let pool_state = fuzz_accounts.pool_state.get_or_create_account(
+                self.accounts.pool_state,
+                client,
+                LAMPORTS_PER_SOL,
+            );
+
+            let vault_0_mint = fuzz_accounts
+                .vault_0_mint
+                .get_or_create_account(0, client, 9, &signer.pubkey(), None)
+                .unwrap();
+
+            let token_0_mint = fuzz_accounts
+                .token_0_mint
+                .get_or_create_account(0, client, 9, &signer.pubkey(), None)
+                .unwrap();
+
+            let token_0_vault = fuzz_accounts
+                .token_0_vault
+                .get_or_create_account(
+                    self.accounts.token_0_vault,
+                    &[
+                        POOL_VAULT_SEED.as_bytes(),
+                        pool_state.pubkey().as_ref(),
+                        token_0_mint.as_ref(),
+                    ],
+                    &raydium_cp_swap::ID,
+                )
+                .unwrap();
+
+            let vault_1_mint = fuzz_accounts
+                .vault_1_mint
+                .get_or_create_account(1, client, 9, &signer.pubkey(), None)
+                .unwrap();
+
+            let lp_mint = fuzz_accounts
+                .lp_mint
+                .get_or_create_account(2, client, 9, &signer.pubkey(), None)
+                .unwrap();
+
+            let owner_lp_token = fuzz_accounts
+                .owner_lp_token
+                .get_or_create_account(
+                    self.accounts.owner_lp_token,
+                    client,
+                    lp_mint,
+                    signer.pubkey(),
+                    0,
+                    None,
+                    None,
+                    0,
+                    None,
+                )
+                .unwrap();
+
+            let token_0_account = fuzz_accounts
+                .token_0_account
+                .get_or_create_account(
+                    self.accounts.token_0_account,
+                    client,
+                    vault_0_mint,
+                    signer.pubkey(),
+                    0,
+                    None,
+                    None,
+                    0,
+                    None,
+                )
+                .unwrap();
+
+            let token_1_account = fuzz_accounts
+                .token_1_account
+                .get_or_create_account(
+                    self.accounts.token_1_account,
+                    client,
+                    vault_1_mint,
+                    signer.pubkey(),
+                    0,
+                    None,
+                    None,
+                    0,
+                    None,
+                )
+                .unwrap();
+
+            let signers = vec![signer.clone()];
             let acc_meta = raydium_cp_swap::accounts::Deposit {
-                owner: todo!(),
-                authority: todo!(),
-                pool_state: todo!(),
-                owner_lp_token: todo!(),
-                token_0_account: todo!(),
-                token_1_account: todo!(),
-                token_0_vault: todo!(),
-                token_1_vault: todo!(),
-                token_program: todo!(),
-                token_program_2022: todo!(),
-                vault_0_mint: todo!(),
-                vault_1_mint: todo!(),
-                lp_mint: todo!(),
+                owner: signer.pubkey(),
+                authority: authority.pubkey(),
+                pool_state: pool_state.pubkey(),
+                owner_lp_token,
+                token_0_account,
+                token_1_account,
+                token_0_vault: token_0_vault.pubkey,
+                token_1_vault: token_0_vault.pubkey,
+                token_program: anchor_spl::token::ID,
+                token_program_2022: anchor_spl::token_2022::ID,
+                vault_0_mint,
+                vault_1_mint,
+                lp_mint,
             }
             .to_account_metas(None);
             Ok((signers, acc_meta))
@@ -518,9 +962,9 @@ pub mod raydium_cp_swap_fuzz_instructions {
             _fuzz_accounts: &mut FuzzAccounts,
         ) -> Result<Self::IxData, FuzzingError> {
             let data = raydium_cp_swap::instruction::Withdraw {
-                lp_token_amount: todo!(),
-                minimum_token_0_amount: todo!(),
-                minimum_token_1_amount: todo!(),
+                lp_token_amount: self.data.lp_token_amount,
+                minimum_token_0_amount: self.data.minimum_token_0_amount,
+                minimum_token_1_amount: self.data.minimum_token_1_amount,
             };
             Ok(data)
         }
@@ -529,22 +973,136 @@ pub mod raydium_cp_swap_fuzz_instructions {
             client: &mut impl FuzzClient,
             fuzz_accounts: &mut FuzzAccounts,
         ) -> Result<(Vec<Keypair>, Vec<AccountMeta>), FuzzingError> {
-            let signers = vec![todo!()];
+            let signer = fuzz_accounts.owner.get_or_create_account(
+                self.accounts.owner,
+                client,
+                LAMPORTS_PER_SOL,
+            );
+
+            let authority = fuzz_accounts.authority.get_or_create_account(
+                self.accounts.authority,
+                client,
+                LAMPORTS_PER_SOL,
+            );
+
+            let pool_state = fuzz_accounts.pool_state.get_or_create_account(
+                self.accounts.pool_state,
+                client,
+                LAMPORTS_PER_SOL,
+            );
+
+            let vault_0_mint = fuzz_accounts
+                .vault_0_mint
+                .get_or_create_account(0, client, 9, &signer.pubkey(), None)
+                .unwrap();
+
+            let token_0_mint = fuzz_accounts
+                .token_0_mint
+                .get_or_create_account(0, client, 9, &signer.pubkey(), None)
+                .unwrap();
+
+            let token_0_vault = fuzz_accounts
+                .token_0_vault
+                .get_or_create_account(
+                    self.accounts.token_0_vault,
+                    &[
+                        POOL_VAULT_SEED.as_bytes(),
+                        pool_state.pubkey().as_ref(),
+                        token_0_mint.as_ref(),
+                    ],
+                    &raydium_cp_swap::ID,
+                )
+                .unwrap();
+
+            let vault_1_mint = fuzz_accounts
+                .vault_1_mint
+                .get_or_create_account(1, client, 9, &signer.pubkey(), None)
+                .unwrap();
+
+            let token_1_mint = fuzz_accounts
+                .token_1_mint
+                .get_or_create_account(1, client, 9, &signer.pubkey(), None)
+                .unwrap();
+
+            let token_1_vault = fuzz_accounts
+                .token_1_vault
+                .get_or_create_account(
+                    self.accounts.token_1_vault,
+                    &[
+                        POOL_VAULT_SEED.as_bytes(),
+                        pool_state.pubkey().as_ref(),
+                        token_1_mint.as_ref(),
+                    ],
+                    &raydium_cp_swap::ID,
+                )
+                .unwrap();
+
+            let lp_mint = fuzz_accounts
+                .lp_mint
+                .get_or_create_account(2, client, 9, &signer.pubkey(), None)
+                .unwrap();
+
+            let owner_lp_token = fuzz_accounts
+                .owner_lp_token
+                .get_or_create_account(
+                    self.accounts.owner_lp_token,
+                    client,
+                    lp_mint,
+                    signer.pubkey(),
+                    0,
+                    None,
+                    None,
+                    0,
+                    None,
+                )
+                .unwrap();
+
+            let token_0_account = fuzz_accounts
+                .token_0_account
+                .get_or_create_account(
+                    self.accounts.token_0_account,
+                    client,
+                    vault_0_mint,
+                    signer.pubkey(),
+                    0,
+                    None,
+                    None,
+                    0,
+                    None,
+                )
+                .unwrap();
+
+            let token_1_account = fuzz_accounts
+                .token_1_account
+                .get_or_create_account(
+                    self.accounts.token_1_account,
+                    client,
+                    vault_1_mint,
+                    signer.pubkey(),
+                    0,
+                    None,
+                    None,
+                    0,
+                    None,
+                )
+                .unwrap();
+
+            let signers = vec![signer.clone()];
             let acc_meta = raydium_cp_swap::accounts::Withdraw {
-                owner: todo!(),
-                authority: todo!(),
-                pool_state: todo!(),
-                owner_lp_token: todo!(),
-                token_0_account: todo!(),
-                token_1_account: todo!(),
-                token_0_vault: todo!(),
-                token_1_vault: todo!(),
-                token_program: todo!(),
-                token_program_2022: todo!(),
-                vault_0_mint: todo!(),
-                vault_1_mint: todo!(),
-                lp_mint: todo!(),
-                memo_program: todo!(),
+                owner: signer.pubkey(),
+                authority: authority.pubkey(),
+                pool_state: pool_state.pubkey(),
+                owner_lp_token,
+                token_0_account,
+                token_1_account,
+                token_0_vault: token_0_vault.pubkey,
+                token_1_vault: token_1_vault.pubkey,
+                token_program: anchor_spl::token::ID,
+                token_program_2022: anchor_spl::token_2022::ID,
+                vault_0_mint,
+                vault_1_mint,
+                lp_mint,
+                memo_program: spl_memo::ID,
             }
             .to_account_metas(None);
             Ok((signers, acc_meta))
@@ -560,8 +1118,8 @@ pub mod raydium_cp_swap_fuzz_instructions {
             _fuzz_accounts: &mut FuzzAccounts,
         ) -> Result<Self::IxData, FuzzingError> {
             let data = raydium_cp_swap::instruction::SwapBaseInput {
-                amount_in: todo!(),
-                minimum_amount_out: todo!(),
+                amount_in: self.data.amount_in,
+                minimum_amount_out: self.data.minimum_amount_out,
             };
             Ok(data)
         }
@@ -570,21 +1128,127 @@ pub mod raydium_cp_swap_fuzz_instructions {
             client: &mut impl FuzzClient,
             fuzz_accounts: &mut FuzzAccounts,
         ) -> Result<(Vec<Keypair>, Vec<AccountMeta>), FuzzingError> {
-            let signers = vec![todo!()];
+            let signer = fuzz_accounts.payer.get_or_create_account(
+                self.accounts.payer,
+                client,
+                LAMPORTS_PER_SOL,
+            );
+
+            let authority = fuzz_accounts.authority.get_or_create_account(
+                self.accounts.authority,
+                client,
+                LAMPORTS_PER_SOL,
+            );
+
+            let amm_config = fuzz_accounts
+                .amm_config
+                .get_or_create_account(
+                    self.accounts.amm_config,
+                    &[AMM_CONFIG_SEED.as_bytes(), &0u16.to_be_bytes()],
+                    &raydium_cp_swap::ID,
+                )
+                .unwrap();
+
+            let pool_state = fuzz_accounts.pool_state.get_or_create_account(
+                self.accounts.pool_state,
+                client,
+                LAMPORTS_PER_SOL,
+            );
+
+            let input_token_mint = fuzz_accounts
+                .input_token_mint
+                .get_or_create_account(0, client, 9, &signer.pubkey(), None)
+                .unwrap();
+
+            let output_token_mint = fuzz_accounts
+                .output_token_mint
+                .get_or_create_account(1, client, 9, &signer.pubkey(), None)
+                .unwrap();
+
+            let input_token_account = fuzz_accounts
+                .input_token_account
+                .get_or_create_account(
+                    self.accounts.input_token_account,
+                    client,
+                    input_token_mint,
+                    signer.pubkey(),
+                    0,
+                    None,
+                    None,
+                    0,
+                    None,
+                )
+                .unwrap();
+
+            let output_token_account = fuzz_accounts
+                .output_token_account
+                .get_or_create_account(
+                    self.accounts.output_token_account,
+                    client,
+                    output_token_mint,
+                    signer.pubkey(),
+                    0,
+                    None,
+                    None,
+                    0,
+                    None,
+                )
+                .unwrap();
+
+            let input_vault = fuzz_accounts
+                .input_vault
+                .get_or_create_account(
+                    self.accounts.input_vault,
+                    client,
+                    input_token_mint,
+                    signer.pubkey(),
+                    0,
+                    None,
+                    None,
+                    0,
+                    None,
+                )
+                .unwrap();
+
+            let output_vault = fuzz_accounts
+                .output_vault
+                .get_or_create_account(
+                    self.accounts.output_vault,
+                    client,
+                    output_token_mint,
+                    signer.pubkey(),
+                    0,
+                    None,
+                    None,
+                    0,
+                    None,
+                )
+                .unwrap();
+
+            let observation_state = fuzz_accounts
+                .observation_state
+                .get_or_create_account(
+                    self.accounts.observation_state,
+                    &[OBSERVATION_SEED.as_bytes(), pool_state.pubkey().as_ref()],
+                    &raydium_cp_swap::ID,
+                )
+                .unwrap();
+
+            let signers = vec![signer.clone()];
             let acc_meta = raydium_cp_swap::accounts::Swap {
-                payer: todo!(),
-                authority: todo!(),
-                amm_config: todo!(),
-                pool_state: todo!(),
-                input_token_account: todo!(),
-                output_token_account: todo!(),
-                input_vault: todo!(),
-                output_vault: todo!(),
-                input_token_program: todo!(),
-                output_token_program: todo!(),
-                input_token_mint: todo!(),
-                output_token_mint: todo!(),
-                observation_state: todo!(),
+                payer: signer.pubkey(),
+                authority: authority.pubkey(),
+                amm_config: amm_config.pubkey,
+                pool_state: pool_state.pubkey(),
+                input_token_account,
+                output_token_account,
+                input_vault,
+                output_vault,
+                input_token_program: anchor_spl::token::ID,
+                output_token_program: anchor_spl::token::ID,
+                input_token_mint,
+                output_token_mint,
+                observation_state: observation_state.pubkey,
             }
             .to_account_metas(None);
             Ok((signers, acc_meta))
@@ -600,8 +1264,8 @@ pub mod raydium_cp_swap_fuzz_instructions {
             _fuzz_accounts: &mut FuzzAccounts,
         ) -> Result<Self::IxData, FuzzingError> {
             let data = raydium_cp_swap::instruction::SwapBaseOutput {
-                max_amount_in: todo!(),
-                amount_out: todo!(),
+                max_amount_in: self.data.max_amount_in,
+                amount_out: self.data.amount_out,
             };
             Ok(data)
         }
@@ -610,21 +1274,127 @@ pub mod raydium_cp_swap_fuzz_instructions {
             client: &mut impl FuzzClient,
             fuzz_accounts: &mut FuzzAccounts,
         ) -> Result<(Vec<Keypair>, Vec<AccountMeta>), FuzzingError> {
-            let signers = vec![todo!()];
+            let signer = fuzz_accounts.payer.get_or_create_account(
+                self.accounts.payer,
+                client,
+                LAMPORTS_PER_SOL,
+            );
+
+            let authority = fuzz_accounts.authority.get_or_create_account(
+                self.accounts.authority,
+                client,
+                LAMPORTS_PER_SOL,
+            );
+
+            let amm_config = fuzz_accounts
+                .amm_config
+                .get_or_create_account(
+                    self.accounts.amm_config,
+                    &[AMM_CONFIG_SEED.as_bytes(), &0u16.to_be_bytes()],
+                    &raydium_cp_swap::ID,
+                )
+                .unwrap();
+
+            let pool_state = fuzz_accounts.pool_state.get_or_create_account(
+                self.accounts.pool_state,
+                client,
+                LAMPORTS_PER_SOL,
+            );
+
+            let input_token_mint = fuzz_accounts
+                .input_token_mint
+                .get_or_create_account(0, client, 9, &signer.pubkey(), None)
+                .unwrap();
+
+            let output_token_mint = fuzz_accounts
+                .output_token_mint
+                .get_or_create_account(1, client, 9, &signer.pubkey(), None)
+                .unwrap();
+
+            let input_token_account = fuzz_accounts
+                .input_token_account
+                .get_or_create_account(
+                    self.accounts.input_token_account,
+                    client,
+                    input_token_mint,
+                    signer.pubkey(),
+                    0,
+                    None,
+                    None,
+                    0,
+                    None,
+                )
+                .unwrap();
+
+            let output_token_account = fuzz_accounts
+                .output_token_account
+                .get_or_create_account(
+                    self.accounts.output_token_account,
+                    client,
+                    output_token_mint,
+                    signer.pubkey(),
+                    0,
+                    None,
+                    None,
+                    0,
+                    None,
+                )
+                .unwrap();
+
+            let input_vault = fuzz_accounts
+                .output_token_account
+                .get_or_create_account(
+                    self.accounts.input_vault,
+                    client,
+                    input_token_mint,
+                    signer.pubkey(),
+                    0,
+                    None,
+                    None,
+                    0,
+                    None,
+                )
+                .unwrap();
+
+            let output_vault = fuzz_accounts
+                .output_token_account
+                .get_or_create_account(
+                    self.accounts.output_vault,
+                    client,
+                    output_token_mint,
+                    signer.pubkey(),
+                    0,
+                    None,
+                    None,
+                    0,
+                    None,
+                )
+                .unwrap();
+
+            let observation_state = fuzz_accounts
+                .observation_state
+                .get_or_create_account(
+                    self.accounts.observation_state,
+                    &[OBSERVATION_SEED.as_bytes(), pool_state.pubkey().as_ref()],
+                    &raydium_cp_swap::ID,
+                )
+                .unwrap();
+
+            let signers = vec![signer.clone()];
             let acc_meta = raydium_cp_swap::accounts::Swap {
-                payer: todo!(),
-                authority: todo!(),
-                amm_config: todo!(),
-                pool_state: todo!(),
-                input_token_account: todo!(),
-                output_token_account: todo!(),
-                input_vault: todo!(),
-                output_vault: todo!(),
-                input_token_program: todo!(),
-                output_token_program: todo!(),
-                input_token_mint: todo!(),
-                output_token_mint: todo!(),
-                observation_state: todo!(),
+                payer: signer.pubkey(),
+                authority: authority.pubkey(),
+                amm_config: amm_config.pubkey,
+                pool_state: pool_state.pubkey(),
+                input_token_account,
+                output_token_account,
+                input_vault,
+                output_vault,
+                input_token_program: anchor_spl::token::ID,
+                output_token_program: anchor_spl::token::ID,
+                input_token_mint,
+                output_token_mint,
+                observation_state: observation_state.pubkey,
             }
             .to_account_metas(None);
             Ok((signers, acc_meta))
@@ -634,44 +1404,44 @@ pub mod raydium_cp_swap_fuzz_instructions {
     #[doc = r" Keypair, PdaStore, TokenStore, MintStore, ProgramStore"]
     #[derive(Default)]
     pub struct FuzzAccounts {
-        amm_config: AccountsStorage<todo!()>,
-        associated_token_program: AccountsStorage<todo!()>,
-        authority: AccountsStorage<todo!()>,
-        create_pool_fee: AccountsStorage<todo!()>,
-        creator: AccountsStorage<todo!()>,
-        creator_lp_token: AccountsStorage<todo!()>,
-        creator_token_0: AccountsStorage<todo!()>,
-        creator_token_1: AccountsStorage<todo!()>,
-        input_token_account: AccountsStorage<todo!()>,
-        input_token_mint: AccountsStorage<todo!()>,
-        input_token_program: AccountsStorage<todo!()>,
-        input_vault: AccountsStorage<todo!()>,
-        lp_mint: AccountsStorage<todo!()>,
-        memo_program: AccountsStorage<todo!()>,
-        observation_state: AccountsStorage<todo!()>,
-        output_token_account: AccountsStorage<todo!()>,
-        output_token_mint: AccountsStorage<todo!()>,
-        output_token_program: AccountsStorage<todo!()>,
-        output_vault: AccountsStorage<todo!()>,
-        owner: AccountsStorage<todo!()>,
-        owner_lp_token: AccountsStorage<todo!()>,
-        payer: AccountsStorage<todo!()>,
-        pool_state: AccountsStorage<todo!()>,
-        recipient_token_0_account: AccountsStorage<todo!()>,
-        recipient_token_1_account: AccountsStorage<todo!()>,
-        rent: AccountsStorage<todo!()>,
-        system_program: AccountsStorage<todo!()>,
-        token_0_account: AccountsStorage<todo!()>,
-        token_0_mint: AccountsStorage<todo!()>,
-        token_0_program: AccountsStorage<todo!()>,
-        token_0_vault: AccountsStorage<todo!()>,
-        token_1_account: AccountsStorage<todo!()>,
-        token_1_mint: AccountsStorage<todo!()>,
-        token_1_program: AccountsStorage<todo!()>,
-        token_1_vault: AccountsStorage<todo!()>,
-        token_program: AccountsStorage<todo!()>,
-        token_program_2022: AccountsStorage<todo!()>,
-        vault_0_mint: AccountsStorage<todo!()>,
-        vault_1_mint: AccountsStorage<todo!()>,
+        amm_config: AccountsStorage<PdaStore>,
+        // associated_token_program: AccountsStorage<todo!()>,
+        authority: AccountsStorage<Keypair>,
+        // create_pool_fee: AccountsStorage<Keypair>,
+        creator: AccountsStorage<Keypair>,
+        creator_lp_token: AccountsStorage<TokenStore>,
+        creator_token_0: AccountsStorage<TokenStore>,
+        creator_token_1: AccountsStorage<TokenStore>,
+        input_token_account: AccountsStorage<TokenStore>,
+        input_token_mint: AccountsStorage<MintStore>,
+        // input_token_program: AccountsStorage<todo!()>,
+        input_vault: AccountsStorage<TokenStore>,
+        lp_mint: AccountsStorage<MintStore>,
+        // memo_program: AccountsStorage<todo!()>,
+        observation_state: AccountsStorage<PdaStore>,
+        output_token_account: AccountsStorage<TokenStore>,
+        output_token_mint: AccountsStorage<MintStore>,
+        // output_token_program: AccountsStorage<todo!()>,
+        output_vault: AccountsStorage<TokenStore>,
+        owner: AccountsStorage<Keypair>,
+        owner_lp_token: AccountsStorage<TokenStore>,
+        payer: AccountsStorage<Keypair>,
+        pool_state: AccountsStorage<Keypair>,
+        recipient_token_0_account: AccountsStorage<Keypair>,
+        recipient_token_1_account: AccountsStorage<Keypair>,
+        // rent: AccountsStorage<todo!()>,
+        // system_program: AccountsStorage<todo!()>,
+        token_0_account: AccountsStorage<TokenStore>,
+        token_0_mint: AccountsStorage<MintStore>,
+        // token_0_program: AccountsStorage<todo!()>,
+        token_0_vault: AccountsStorage<PdaStore>,
+        token_1_account: AccountsStorage<TokenStore>,
+        token_1_mint: AccountsStorage<MintStore>,
+        // token_1_program: AccountsStorage<todo!()>,
+        token_1_vault: AccountsStorage<PdaStore>,
+        // token_program: AccountsStorage<todo!()>,
+        // token_program_2022: AccountsStorage<todo!()>,
+        vault_0_mint: AccountsStorage<MintStore>,
+        vault_1_mint: AccountsStorage<MintStore>,
     }
 }
