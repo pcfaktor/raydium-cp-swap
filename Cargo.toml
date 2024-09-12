@@ -6,6 +6,7 @@ resolver = "1"
 overflow-checks = true
 lto = "fat"
 codegen-units = 1
+panic = "abort"
 
 [profile.release.build-override]
 opt-level = 3
